@@ -2,57 +2,65 @@ import torch
 
 
 class BaseOperator(object):
-	num_flt_inputs = 0;
-	num_str_inputs = 0; 
+	def __init__(self):
+		self.num_flt_inputs = 0;
+		self.num_str_inputs = 0; 
+		self.template = "BaseOperator"
+	
 
-	@classmethod
-	def forward(cls, args):
+	def forward(self, args):
 		raise NotImplementedError("Not Implemeneted")
 
-	@classmethod
-	def backward(cls, args):
+	def backward(self, args):
 		raise NotImplementedError("Not Implemeneted")
+
 
 class Add(BaseOperator):
-	num_flt_inputs = 2;
+	def __init__(self):
+		self.num_flt_inputs = 2;
+		self.template = "(%s + %s)"
 
-	@classmethod
-	def forward(cls, x,y):
+	def forward(self, x,y):
 		return x+y
 
 class Subtract(BaseOperator):
-	num_flt_inputs = 2;
+	def __init__(self):
+		self.num_flt_inputs = 2;
+		self.template = "(%s - %s)"
 
-	@classmethod
-	def forward(cls, x,y):
+	def forward(self, x,y):
 		return x-y
 
 class Multiply(BaseOperator):
-	num_flt_inputs = 2;
+	def __init__(self):
+		self.num_flt_inputs = 2;
+		self.template = "(%s * %s)"
 
-	@classmethod
-	def forward(cls, x,y):
+	def forward(self, x,y):
 		return x*y
 
 class Divide(BaseOperator):
-	num_flt_inputs = 2;
+	def __init__(self):
+		self.num_flt_inputs = 2;
+		self.template = "(%s / %s)"
 
-	@classmethod
-	def forward(cls, x,y):
+	def forward(self, x,y):
 		return x/y
 
 class Mod10(BaseOperator):
-	num_flt_inputs = 1;
+	def __init__(self):
+		self.num_flt_inputs = 1;
+		self.template = "(%s %% 10)"
 
-	@classmethod
-	def forward(cls, x):
+	def forward(self, x):
 		return x % 10
 
 class Div10(BaseOperator):
-	num_flt_inputs = 1;
+	def __init__(self):
+		self.num_flt_inputs = 1;
+		self.template = "(%s // 10)"
 
-	@classmethod
-	def forward(cls, x):
+	def forward(self, x):
 		return x // 10
 
 
@@ -63,8 +71,7 @@ def reshape_args(args):
 	return [a.view(*([1]*i + [-1] + (l-i)*[1])) for i, a in enumerate(args)]
 
 
-operator_set = [Add,Subtract,Multiply,Divide,Mod10,Div10]
-operator_nf_inps = torch.tensor([x.num_flt_inputs for x in operator_set])
+
 
 def resolve_inputs(flat_input_indices, op_inds,n_elems):
 	nf_inps = operator_nf_inps.gather(0,op_inds)
@@ -134,7 +141,7 @@ def resolve_operator(offset_indicies,offset):
 def indicies_to_operator_graph(indicies, d_len):
 	# print(index > torch.tensor(d_len).view(1,-1))
 	# print(torch.tensor(d_len).view(1,-1).shape)
-	d_len = torch.tensor(d_len)
+	# d_len = 
 	n_lsthn = indicies >= d_len.view(1,-1)
 	# offset = torch.sum(n_lsthn.long() * d_len,1)
 	# indicies - offset
@@ -162,6 +169,7 @@ def indicies_to_operator_graph(indicies, d_len):
 				# print(arg_set.shape)
 				arg_set = arg_set.gather(0,(arg_set >= 0).nonzero().flatten())
 				# print( "OUT" ,(operator_set[op_ind], numerical_values.gather(0,arg_set) ) )
+				# print(len(indicies))
 				yield [operator_set[op_ind], *[x.item() if x.item() < d_len[0] else indicies_to_operator_graph(x.view(1),d_len) for x in arg_set]] 
 		else:
 			# print("MOOOO")
@@ -175,13 +183,16 @@ def indicies_to_operator_graph(indicies, d_len):
 		# offset += d_len
 
 import types
-def repr_rule(x,numerical_values):
+def repr_rule(x,numerical_values, include_element=True, include_value=True):
 	if(isinstance(x,list)):
-		return str(x[0]) + "(" + " , ".join([repr_rule(y,numerical_values) for y in x[1:]]) + ")"
+		return x[0].template % tuple([repr_rule(y,numerical_values) for y in x[1:]])
 	elif(isinstance(x,types.GeneratorType)):
 		return repr_rule(next(x), numerical_values)
 	else:
-		return "E" + str(x) + ":" + repr(numerical_values.gather(0,torch.tensor(x)).item())
+		a = "E" + str(x) if include_element else ""
+		b = ":" if include_element and include_value else ""
+		c = repr(numerical_values.gather(0,torch.tensor(x)).item()) if include_value else ""
+		return a + b + c
 
 
 
@@ -208,7 +219,7 @@ def how_search(numerical_values, goal, search_depth = 1):
 
 		indicies = (numerical_values == goal).nonzero()
 		print("NUM RESULTS", indicies.shape)
-		for tup in indicies_to_operator_graph(indicies,d_len):
+		for tup in indicies_to_operator_graph(indicies,torch.tensor(d_len)):
 			print(repr_rule(tup,numerical_values))
 			
 
@@ -217,19 +228,21 @@ def how_search(numerical_values, goal, search_depth = 1):
 		# print(indicies.shape)
 
 
-
+operator_class_set = [Add,Mod10,Div10]
+operator_set = [c() for c in operator_class_set ]
+operator_nf_inps = torch.tensor([x.num_flt_inputs for x in operator_set])
 	
 
 
 
-# x = torch.FloatTensor([1,2,3,4,6,7,8,9,0,16])
-# how_search(x,6, search_depth=1)
-# print(x)
+x = torch.FloatTensor([7,8,9])
+how_search(x,6, search_depth=2)
+print(x)
 # print(type(x))
 
 
-x = torch.FloatTensor([1,1,1])
-how_search(x,3,search_depth=2)
+# x = torch.FloatTensor([1,1])
+# how_search(x,1,search_depth=1)
 
 
 
