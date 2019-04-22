@@ -28,7 +28,7 @@ class BaseOperator(object):
 		raise NotImplementedError("Not Implemeneted")
 	def search_mask(self,*args):
 		return args
-	def __repr__(self):
+	def __str__(self):
 		return self.template % tuple(["E" + str(i) for i in range(len(self.in_arg_types))])
 
 
@@ -163,7 +163,7 @@ class OperatorGraph(BaseOperator):
 		self.num_flt_inputs = len(self.in_args)
 
 		# print(self.expression)
-	# def __repr__(self):
+	# def __str__(self):
 	# 	return self.template % ('E' + str(i))
 
 	def _forward(self,x,inps,first=True):
@@ -191,9 +191,6 @@ class OperatorGraph(BaseOperator):
 		print(inps)
 		return self._forward(self.expression,inps).item()		
 		
-
-
-
 
 
 def eval_expression(x):
@@ -465,6 +462,8 @@ def how_search(state, goal, search_depth = 1,backmap=None):
 		for tup in indicies_to_operator_graph(indicies,torch.tensor(d_len),operator_set):
 			inps = rule_inputs(tup)
 			if(len(set(inps)) == len(inps) and inps == sorted(inps)):
+				print(inps,backmap)
+				print([backmap[x] for x in inps])
 				yield OperatorGraph(tup)
 				# print(tup)
 				# print(repr_rule(tup,numerical_values))
@@ -702,10 +701,10 @@ def tree_to_code(tree, feature_names):
 blehh_state = {('value', '?ele-1'): 1,('value', '?ele-2'): 2,('value', '?ele-3'): 4}
 
 x = torch.FloatTensor([1,2,4])
-backmap = [[('value', "?A"),('value', "?B"),('value', "?C")]]
+backmap = [('value', "?A"),('value', "?B"),('value', "?C")]
 ogs = []
 for og in how_search(x,3,search_depth=2,backmap=backmap):
-	print(og)
+	print(og, og.expression)
 	ogs.append(og)
 
 mapping = {"?foa0" : "?ele-1","?foa1" : "?ele-2","?foa2" : "?ele-3"}
@@ -715,6 +714,7 @@ operator_set = [ogs[1]]
 operator_nf_inps = torch.tensor([x.num_flt_inputs for x in operator_set])
 print("----------------------------------")
 og2 = next(how_search(x,3,search_depth=1,backmap=backmap))
+print(og2,og2.expression)
 print("COMPUTE",og2.compute(mapping, blehh_state))
 	# print(og)
 
