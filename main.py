@@ -662,17 +662,85 @@ def tree_to_code(tree, feature_names):
 
 	recurse(0, 1)
 
-# tree = DecisionTreeClassifier()
+tree = DecisionTreeClassifier()
+
+import numpy as np
+
+def examples_to_path(tree,examples,feature_names):
+	tree_ = tree.tree_
+	feature_name = [
+		feature_names[i] if i != _tree.TREE_UNDEFINED else "undefined!"
+		for i in tree_.feature
+	]
+	node_indicator = tree.decision_path(examples)
+	print(node_indicator)
+	dense_ind = np.array(node_indicator.todense())
+	print(dense_ind)
+	
+	def recurse(node,ind):
+		# print(node,ind[node], feature_name[node])
+		# if(ind[node] == 0):
+		# 	return None
+		if(tree_.feature[node] != _tree.TREE_UNDEFINED ):
+			# s = c
+			l = tree_.children_left[node]
+			r = tree_.children_right[node]
+
+			# print( "LR", ind[l],ind[r])
+			less = ind[l]
+			if(not less):
+				s = recurse(tree_.children_right[node],ind)
+			else:
+				s = recurse(tree_.children_left[node],ind)
+				# if(s == None):
+				# 	return ""
+			name = feature_name[node]
+			ineq = " <= " if less else " > "
+			thresh = str(tree_.threshold[node])
+			delim = ", " if s != "" else ""
+			return  name + ineq + thresh + delim + s 
+
+		else:
+			return ""
+
+		# print([x for x in ind])
+		# name = feature_name
+		# print(", ".join([("<=" if x else ">")  + feature_names[i] for i,x in enumerate(ind) if i < len(feature_names)] ))
+	for ind in dense_ind:
+		print(recurse(0,ind))
+
+
+# print(tree.n_features_)
+# print(node_indicator)
 # print(tree.tree_.feature)
-# tree.fit(X_vec,Y)
+tree.fit(X_vec,Y)
 
-# tree_to_code(tree,[1,2,3,4])
+feature_names = ["A","B","C","D"]
+examples_to_path(tree,X_vec,feature_names)
+
+# node_indicator = tree.decision_path(X_vec)
 
 
+
+# print(_tree.TREE_UNDEFINED)
+# print(tree.tree_.feature)
+# # print(node_indicator.todense(),type(node_indicator))
+# dense_ind = node_indicator.todense()
+# print(dense_ind)
+# print(sorted([i for i in tree.tree_.feature if i != _tree.TREE_UNDEFINED ]))
+# print(dense_ind[:,sorted([i for i in tree.tree_.feature if i != _tree.TREE_UNDEFINED ])])
+
+
+
+
+fn = [
+	feature_names[i] for i in sorted(tree.tree_.feature) if i != _tree.TREE_UNDEFINED 
+]
+print(fn)
 
 # tree.fit(X,Y)
 # apply_feature_set(example_state)
-
+tree_to_code(tree,feature_names)
 
 
 
@@ -698,28 +766,31 @@ def tree_to_code(tree, feature_names):
 # x = torch.FloatTensor([1,2])
 # how_search(x,3,search_depth=2)
 
-blehh_state = {('value', '?ele-1'): 1,('value', '?ele-2'): 2,('value', '?ele-3'): 4}
 
-x = torch.FloatTensor([1,2,4])
-backmap = [('value', "?A"),('value', "?B"),('value', "?C")]
-ogs = []
-for og in how_search(x,3,search_depth=2,backmap=backmap):
-	print(og, og.expression)
-	ogs.append(og)
+#######################
 
-mapping = {"?foa0" : "?ele-1","?foa1" : "?ele-2","?foa2" : "?ele-3"}
-print("COMPUTE",ogs[1].compute(mapping, blehh_state))
+# blehh_state = {('value', '?ele-1'): 1,('value', '?ele-2'): 2,('value', '?ele-3'): 4}
 
-operator_set = [ogs[1]]
-operator_nf_inps = torch.tensor([x.num_flt_inputs for x in operator_set])
-print("----------------------------------")
-og2 = next(how_search(x,3,search_depth=1,backmap=backmap))
-print(og2,og2.expression)
-print("COMPUTE",og2.compute(mapping, blehh_state))
-	# print(og)
+# x = torch.FloatTensor([1,2,4])
+# backmap = [('value', "?A"),('value', "?B"),('value', "?C")]
+# ogs = []
+# for og in how_search(x,3,search_depth=2,backmap=backmap):
+# 	print(og, og.expression)
+# 	ogs.append(og)
+
+# mapping = {"?foa0" : "?ele-1","?foa1" : "?ele-2","?foa2" : "?ele-3"}
+# print("COMPUTE",ogs[1].compute(mapping, blehh_state))
+
+# operator_set = [ogs[1]]
+# operator_nf_inps = torch.tensor([x.num_flt_inputs for x in operator_set])
+# print("----------------------------------")
+# og2 = next(how_search(x,3,search_depth=1,backmap=backmap))
+# print(og2,og2.expression)
+# print("COMPUTE",og2.compute(mapping, blehh_state))
+# 	# print(og)
 
 
-
+#########################
 
 
 	
